@@ -1,0 +1,502 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TenantStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum LicensePlan {
+  BASIC
+  PREMIUM
+  ENTERPRISE
+}
+
+enum DomainStatus {
+  PENDING
+  VALIDATED
+  BLOCKED
+}
+
+enum BackupStatus {
+  COMPLETED
+  RESTORED
+  FAILED
+}
+
+enum UserRole {
+  MASTER
+  ADMIN_CAMARA
+  SECRETARIO
+  PRESIDENTE
+  VEREADOR
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum CouncilMemberStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum LegislativeMatterStatus {
+  DRAFT
+  PROTOCOLLED
+  IN_SESSION
+  VOTING
+  APPROVED
+  REJECTED
+  ARCHIVED
+}
+
+enum PlenarySessionStatus {
+  SCHEDULED
+  OPENED
+  VOTING
+  CLOSED
+  CANCELLED
+}
+
+enum AgendaItemStatus {
+  PENDING
+  IN_DISCUSSION
+  VOTING
+  VOTED
+  SKIPPED
+}
+
+enum VoteValue {
+  YES
+  NO
+  ABSTAIN
+  ABSENT
+}
+
+enum MfaPurpose {
+  LOGIN
+  VOTE
+}
+
+enum PublicationStatus {
+  DRAFT
+  IN_REVIEW
+  PUBLISHED
+  UNPUBLISHED
+  ARCHIVED
+}
+
+model Tenant {
+  id                    String       @id @default(uuid())
+  name                  String
+  legalName             String?      @map("legal_name")
+  tradeName             String?      @map("trade_name")
+  document              String       @unique
+  stateRegistration     String?      @map("state_registration")
+  municipalRegistration String?      @map("municipal_registration")
+  responsibleName       String?      @map("responsible_name")
+  responsibleEmail      String?      @map("responsible_email")
+  responsiblePhone      String?      @map("responsible_phone")
+  contactEmail          String?      @map("contact_email")
+  contactPhone          String?      @map("contact_phone")
+  website               String?
+  zipCode               String?      @map("zip_code")
+  street                String?
+  number                String?
+  complement            String?
+  neighborhood          String?
+  city                  String
+  state                 String
+  billingZipCode        String?      @map("billing_zip_code")
+  billingStreet         String?      @map("billing_street")
+  billingNumber         String?      @map("billing_number")
+  billingComplement     String?      @map("billing_complement")
+  billingNeighborhood   String?      @map("billing_neighborhood")
+  billingCity           String?      @map("billing_city")
+  billingState          String?      @map("billing_state")
+  status                TenantStatus @default(ACTIVE)
+  deletedAt             DateTime?    @map("deleted_at")
+  createdAt             DateTime     @default(now()) @map("created_at")
+  updatedAt             DateTime     @updatedAt @map("updated_at")
+
+  users              User[]
+  councilMembers     CouncilMember[]
+  legislativeMatters LegislativeMatter[]
+  plenarySessions    PlenarySession[]
+  agendaItems        SessionAgendaItem[]
+  votes              Vote[]
+  mfaChallenges      MfaChallenge[]
+  auditLogs          AuditLog[]
+  license            TenantLicense?
+  domains            TenantDomain[]
+  branding           TenantBranding?
+  portalPages        PortalPage[]
+  portalBanners      PortalBanner[]
+  portalMenuItems    PortalMenuItem[]
+  adminProfiles      AdminProfile[]
+
+  @@map("tenants")
+}
+
+model User {
+  id                    String     @id @default(uuid())
+  tenantId              String?    @map("tenant_id")
+  adminProfileId        String?    @map("admin_profile_id")
+  name                  String
+  email                 String     @unique
+  passwordHash          String     @map("password_hash")
+  role                  UserRole
+  status                UserStatus @default(ACTIVE)
+  mfaRequired           Boolean    @default(false) @map("mfa_required")
+  passwordResetRequired Boolean    @default(false) @map("password_reset_required")
+  createdAt             DateTime   @default(now()) @map("created_at")
+  updatedAt             DateTime   @updatedAt @map("updated_at")
+
+  tenant          Tenant?          @relation(fields: [tenantId], references: [id])
+  adminProfile    AdminProfile?    @relation(fields: [adminProfileId], references: [id])
+  councilMember   CouncilMember?
+  createdMatters  LegislativeMatter[] @relation("MatterCreator")
+  mfaChallenges   MfaChallenge[]
+  auditLogs       AuditLog[]
+
+  @@index([tenantId, role])
+  @@index([adminProfileId])
+  @@map("users")
+}
+
+model AdminProfile {
+  id          String   @id @default(uuid())
+  tenantId    String   @map("tenant_id")
+  name        String
+  description String?
+  modules     Json
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  users  User[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId, active])
+  @@map("admin_profiles")
+}
+
+model CouncilMember {
+  id        String              @id @default(uuid())
+  tenantId  String              @map("tenant_id")
+  userId    String?             @unique @map("user_id")
+  name      String
+  cpf       String?
+  rg        String?
+  birthDate DateTime?           @map("birth_date")
+  occupation String?
+  email     String?
+  phone     String?
+  mobile    String?
+  zipCode   String?             @map("zip_code")
+  street    String?
+  number    String?
+  complement String?
+  neighborhood String?
+  city      String?
+  state     String?
+  businessDocument String?      @map("business_document")
+  businessName String?          @map("business_name")
+  businessTradeName String?     @map("business_trade_name")
+  businessEmail String?         @map("business_email")
+  businessPhone String?         @map("business_phone")
+  businessZipCode String?       @map("business_zip_code")
+  businessStreet String?        @map("business_street")
+  businessNumber String?        @map("business_number")
+  businessComplement String?    @map("business_complement")
+  businessNeighborhood String?  @map("business_neighborhood")
+  businessCity String?          @map("business_city")
+  businessState String?         @map("business_state")
+  party     String
+  photoUrl  String?             @map("photo_url")
+  legislativePeriod String?     @map("legislative_period")
+  legislativeRole String?       @map("legislative_role")
+  isPresident Boolean           @default(false) @map("is_president")
+  isSecretary Boolean           @default(false) @map("is_secretary")
+  termStart DateTime            @map("term_start")
+  termEnd   DateTime            @map("term_end")
+  status    CouncilMemberStatus @default(ACTIVE)
+
+  tenant          Tenant              @relation(fields: [tenantId], references: [id])
+  user            User?               @relation(fields: [userId], references: [id])
+  authoredMatters LegislativeMatter[] @relation("MatterAuthor")
+  votes           Vote[]
+
+  @@index([tenantId, status])
+  @@map("council_members")
+}
+
+model LegislativeMatter {
+  id          String                  @id @default(uuid())
+  tenantId    String                  @map("tenant_id")
+  type        String
+  number      Int
+  year        Int
+  title       String
+  summary     String
+  authorId    String                  @map("author_id")
+  status      LegislativeMatterStatus @default(DRAFT)
+  documentUrl String?                 @map("document_url")
+  createdBy   String                  @map("created_by")
+  createdAt   DateTime                @default(now()) @map("created_at")
+  updatedAt   DateTime                @updatedAt @map("updated_at")
+
+  tenant      Tenant              @relation(fields: [tenantId], references: [id])
+  author      CouncilMember       @relation("MatterAuthor", fields: [authorId], references: [id])
+  creator     User                @relation("MatterCreator", fields: [createdBy], references: [id])
+  agendaItems SessionAgendaItem[]
+  votes       Vote[]
+
+  @@unique([tenantId, type, number, year])
+  @@index([tenantId, status])
+  @@map("legislative_matters")
+}
+
+model PlenarySession {
+  id          String               @id @default(uuid())
+  tenantId    String               @map("tenant_id")
+  type        String
+  number      Int
+  date        DateTime
+  status      PlenarySessionStatus @default(SCHEDULED)
+  openedAt    DateTime?            @map("opened_at")
+  closedAt    DateTime?            @map("closed_at")
+  presidentId String               @map("president_id")
+  secretaryId String               @map("secretary_id")
+
+  tenant      Tenant              @relation(fields: [tenantId], references: [id])
+  agendaItems SessionAgendaItem[]
+  votes       Vote[]
+
+  @@unique([tenantId, type, number])
+  @@index([tenantId, status])
+  @@map("plenary_sessions")
+}
+
+model SessionAgendaItem {
+  id        String           @id @default(uuid())
+  tenantId  String           @map("tenant_id")
+  sessionId String           @map("session_id")
+  matterId  String           @map("matter_id")
+  order     Int
+  status    AgendaItemStatus @default(PENDING)
+
+  tenant  Tenant            @relation(fields: [tenantId], references: [id])
+  session PlenarySession    @relation(fields: [sessionId], references: [id])
+  matter  LegislativeMatter @relation(fields: [matterId], references: [id])
+
+  @@unique([tenantId, sessionId, matterId])
+  @@unique([tenantId, sessionId, order])
+  @@map("session_agenda_items")
+}
+
+model Vote {
+  id              String    @id @default(uuid())
+  tenantId        String    @map("tenant_id")
+  sessionId       String    @map("session_id")
+  matterId        String    @map("matter_id")
+  councilMemberId String    @map("council_member_id")
+  vote            VoteValue
+  confirmedAt     DateTime  @map("confirmed_at")
+  mfaMethod       String    @map("mfa_method")
+  ipAddress       String?   @map("ip_address")
+  userAgent       String?   @map("user_agent")
+  deviceHash      String?   @map("device_hash")
+  voteHash        String    @map("vote_hash")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  tenant        Tenant            @relation(fields: [tenantId], references: [id])
+  session       PlenarySession    @relation(fields: [sessionId], references: [id])
+  matter        LegislativeMatter @relation(fields: [matterId], references: [id])
+  councilMember CouncilMember     @relation(fields: [councilMemberId], references: [id])
+
+  @@unique([tenantId, sessionId, matterId, councilMemberId])
+  @@index([tenantId, sessionId, matterId])
+  @@map("votes")
+}
+
+model MfaChallenge {
+  id         String     @id @default(uuid())
+  tenantId   String?    @map("tenant_id")
+  userId     String     @map("user_id")
+  codeHash   String     @map("code_hash")
+  purpose    MfaPurpose
+  expiresAt  DateTime   @map("expires_at")
+  consumedAt DateTime?  @map("consumed_at")
+  attempts   Int        @default(0)
+  createdAt  DateTime   @default(now()) @map("created_at")
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id])
+  user   User    @relation(fields: [userId], references: [id])
+
+  @@index([tenantId, userId, purpose])
+  @@map("mfa_challenges")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  tenantId    String?  @map("tenant_id")
+  actorUserId String?  @map("actor_user_id")
+  action      String
+  entity      String
+  entityId    String   @map("entity_id")
+  beforeJson  Json?    @map("before_json")
+  afterJson   Json?    @map("after_json")
+  ipAddress   String?  @map("ip_address")
+  userAgent   String?  @map("user_agent")
+  hash        String
+  previousHash String? @map("previous_hash")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id])
+  actor  User?   @relation(fields: [actorUserId], references: [id])
+
+  @@index([tenantId, entity, entityId])
+  @@index([hash])
+  @@map("audit_logs")
+}
+
+model TenantLicense {
+  id                String      @id @default(uuid())
+  tenantId          String      @unique @map("tenant_id")
+  plan              LicensePlan @default(BASIC)
+  maxUsers          Int         @default(25) @map("max_users")
+  maxCouncilMembers Int         @default(11) @map("max_council_members")
+  storageGb         Int         @default(20) @map("storage_gb")
+  features          String
+  securityPolicy    String      @map("security_policy")
+  expiresAt         DateTime?   @map("expires_at")
+  createdAt         DateTime    @default(now()) @map("created_at")
+  updatedAt         DateTime    @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@map("tenant_licenses")
+}
+
+model TenantDomain {
+  id        String       @id @default(uuid())
+  tenantId  String       @map("tenant_id")
+  hostname  String       @unique
+  status    DomainStatus @default(PENDING)
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@map("tenant_domains")
+}
+
+model TenantBranding {
+  id              String   @id @default(uuid())
+  tenantId        String   @unique @map("tenant_id")
+  displayName     String   @map("display_name")
+  logoLoginUrl    String?  @map("logo_login_url")
+  logoSidenavUrl  String?  @map("logo_sidenav_url")
+  logoPortalUrl   String?  @map("logo_portal_url")
+  faviconUrl      String?  @map("favicon_url")
+  primaryColor    String   @default("#0B3C6D") @map("primary_color")
+  accentColor     String   @default("#D4AF37") @map("accent_color")
+  footerText      String?  @map("footer_text")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@map("tenant_branding")
+}
+
+model PlatformSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("platform_settings")
+}
+
+model PlatformBackup {
+  id        String       @id @default(uuid())
+  sizeBytes BigInt       @map("size_bytes")
+  status    BackupStatus @default(COMPLETED)
+  source    String
+  createdAt DateTime     @default(now()) @map("created_at")
+
+  @@map("platform_backups")
+}
+
+model PortalPage {
+  id          String            @id @default(uuid())
+  tenantId    String            @map("tenant_id")
+  slug        String
+  title       String
+  summary     String?
+  content     String
+  status      PublicationStatus @default(DRAFT)
+  publishedAt DateTime?         @map("published_at")
+  createdBy   String            @map("created_by")
+  updatedBy   String?           @map("updated_by")
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, slug])
+  @@index([tenantId, status])
+  @@map("portal_pages")
+}
+
+model PortalBanner {
+  id          String            @id @default(uuid())
+  tenantId    String            @map("tenant_id")
+  title       String
+  subtitle    String?
+  imageUrl    String?           @map("image_url")
+  linkUrl     String?           @map("link_url")
+  sortOrder   Int               @default(0) @map("sort_order")
+  status      PublicationStatus @default(DRAFT)
+  active      Boolean           @default(true)
+  publishedAt DateTime?         @map("published_at")
+  createdBy   String            @map("created_by")
+  updatedBy   String?           @map("updated_by")
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, status, active])
+  @@map("portal_banners")
+}
+
+model PortalMenuItem {
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  label     String
+  url       String
+  sortOrder Int      @default(0) @map("sort_order")
+  active    Boolean  @default(true)
+  createdBy String   @map("created_by")
+  updatedBy String?  @map("updated_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, active])
+  @@map("portal_menu_items")
+}

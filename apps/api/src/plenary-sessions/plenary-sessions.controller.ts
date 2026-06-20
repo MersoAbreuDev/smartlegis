@@ -1,0 +1,38 @@
+import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { UserRole } from '@prisma/client';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { Roles } from '../common/decorators/roles.decorator';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../common/guards/roles.guard';
+import { CreatePlenarySessionDto } from './dto';
+import { PlenarySessionsService } from './plenary-sessions.service';
+
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Controller('plenary-sessions')
+export class PlenarySessionsController {
+  constructor(private readonly service: PlenarySessionsService) {}
+
+  @Get()
+  @Roles(UserRole.ADMIN_CAMARA, UserRole.SECRETARIO, UserRole.PRESIDENTE, UserRole.VEREADOR)
+  list(@CurrentUser() user: { tenantId: string }) {
+    return this.service.list(user.tenantId);
+  }
+
+  @Post()
+  @Roles(UserRole.SECRETARIO)
+  create(@Body() dto: CreatePlenarySessionDto, @CurrentUser() user: { sub: string; tenantId: string | null }) {
+    return this.service.create(dto, user);
+  }
+
+  @Patch(':id/open')
+  @Roles(UserRole.PRESIDENTE)
+  open(@Param('id') id: string, @CurrentUser() user: { sub: string; tenantId: string }) {
+    return this.service.open(id, user);
+  }
+
+  @Patch(':id/close')
+  @Roles(UserRole.PRESIDENTE)
+  close(@Param('id') id: string, @CurrentUser() user: { sub: string; tenantId: string }) {
+    return this.service.close(id, user);
+  }
+}

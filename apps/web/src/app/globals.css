@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --primary: #0B3C6D;
+  --secondary: #12263A;
+  --accent: #D4AF37;
+  --surface: #F4F6F8;
+  --text: #475569;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--surface);
+  color: var(--text);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.logo-ribbon {
+  background:
+    linear-gradient(135deg, #0b1d3a 0%, #1447e6 48%, #00b4ff 100%);
+  clip-path: polygon(22% 0, 100% 0, 78% 22%, 34% 22%, 67% 41%, 100% 62%, 72% 100%, 0 100%, 30% 80%, 67% 80%, 34% 60%, 0 39%);
+}

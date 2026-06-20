@@ -1,0 +1,24 @@
+{
+  "name": "smartlegis",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MVP multi tenant para gestao legislativa municipal com votacao segura, MFA e auditoria.",
+  "workspaces": [
+    "apps/api",
+    "apps/bff-admin",
+    "apps/bff-plenary",
+    "apps/bff-public",
+    "apps/web"
+  ],
+  "scripts": {
+    "dev": "docker compose up -d postgres && npm run db:deploy && npm run dev --workspace apps/api & npm run dev --workspace apps/web",
+    "api:dev": "npm run dev --workspace apps/api",
+    "web:dev": "npm run dev --workspace apps/web",
+    "db:migrate": "npm run prisma:migrate --workspace apps/api",
+    "db:deploy": "npm run prisma:deploy --workspace apps/api",
+    "db:seed": "npm run prisma:seed --workspace apps/api"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
