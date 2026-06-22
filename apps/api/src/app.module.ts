@@ -10,9 +10,12 @@ import { MasterModule } from './master/master.module';
 import { PlenarySessionsModule } from './plenary-sessions/plenary-sessions.module';
 import { PortalContentModule } from './portal-content/portal-content.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { ProtocolsModule } from './protocols/protocols.module';
 import { PublicPortalModule } from './public-portal/public-portal.module';
 import { RolesModule } from './roles/roles.module';
 import { SessionAgendaModule } from './session-agenda/session-agenda.module';
+import { SessionAttendanceModule } from './session-attendance/session-attendance.module';
+import { SessionMinutesModule } from './session-minutes/session-minutes.module';
 import { TenantsModule } from './tenants/tenants.module';
 import { UsersModule } from './users/users.module';
 import { VotesModule } from './votes/votes.module';
@@ -29,8 +32,11 @@ import { VotesModule } from './votes/votes.module';
     CouncilMembersModule,
     LegislativeMattersModule,
     PlenarySessionsModule,
+    ProtocolsModule,
     PortalContentModule,
     SessionAgendaModule,
+    SessionAttendanceModule,
+    SessionMinutesModule,
     VotesModule,
     AuditLogsModule,
     BrandingAssetsModule,

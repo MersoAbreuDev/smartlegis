@@ -1,6 +1,6 @@
 'use client';
 
-import { Activity, Bell, Crown, FileText, Gavel, Home, Landmark, Lock, LogOut, ShieldCheck, UserCog, Users, Vote } from 'lucide-react';
+import { Activity, Bell, ClipboardList, Crown, FileText, Gavel, Home, Landmark, Lock, LogOut, ShieldCheck, UserCog, Users, Vote } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSearchParams } from 'next/navigation';
@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 const nav = [
   { id: 'master', label: 'Master', href: '/master', icon: Crown },
   { id: 'admin', label: 'Admin', href: '/admin', icon: Home },
+  { id: 'secretaria', label: 'Secretaria', href: '/secretaria', icon: ClipboardList },
   { id: 'plenario', label: 'Plenario', href: '/plenario', icon: Gavel },
   { id: 'vereador', label: 'Vereador', href: '/vereador', icon: Vote },
   { id: 'publico', label: 'Portal publico', href: '/publico', icon: Landmark, external: true }

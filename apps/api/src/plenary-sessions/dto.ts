@@ -1,4 +1,4 @@
-import { IsDateString, IsInt, IsString, Min } from 'class-validator';
+import { IsDateString, IsInt, IsOptional, IsString, Min } from 'class-validator';
 
 export class CreatePlenarySessionDto {
   @IsString()
@@ -12,4 +12,27 @@ export class CreatePlenarySessionDto {
   presidentId!: string;
   @IsString()
   secretaryId!: string;
+}
+
+export class UpdatePlenarySessionDto {
+  @IsOptional()
+  @IsString()
+  type?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  number?: number;
+
+  @IsOptional()
+  @IsDateString()
+  date?: string;
+
+  @IsOptional()
+  @IsString()
+  presidentId?: string;
+
+  @IsOptional()
+  @IsString()
+  secretaryId?: string;
 }

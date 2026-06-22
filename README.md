@@ -42,15 +42,27 @@ npm run api:dev
 npm run web:dev
 ```
 
+Ou rode tudo de uma vez, ja subindo o Postgres e aplicando migrations pendentes:
+
+```bash
+npm run dev
+```
+
 API: `http://localhost:3333/api`  
 Web: `http://localhost:3000`
+
+Portal publico por host local:
+
+- `http://santaaurora.localhost:3000` abre o portal publico do tenant demo.
+- `http://sandovalina.localhost:3000` abre o portal publico da Camara de Sandovalina quando existir tenant/domínio correspondente. O domínio pode ser cadastrado no Master como `sandovalina.localhost`; em desenvolvimento, a API também tenta resolver pelo slug do nome/cidade da Camara.
 
 Rotas principais do frontend:
 
 - `/` login integrado ao backend, MFA e redirecionamento por perfil.
 - `/master` console de plataforma protegido para MASTER.
-- `/admin` painel administrativo da Camara protegido para ADMIN_CAMARA e SECRETARIO.
-- `/plenario` telas do presidente, secretario e resultado protegidas para PRESIDENTE e SECRETARIO.
+- `/admin` painel administrativo da Camara protegido para ADMIN_CAMARA.
+- `/secretaria` mesa da Secretaria Legislativa protegida para SECRETARIO.
+- `/plenario` telas do presidente e resultado protegidas para PRESIDENTE e SECRETARIO.
 - `/vereador` tela de voto nominal com MFA e comprovante protegida para VEREADOR.
 - `/publico` portal publico de transparencia.
 
@@ -64,6 +76,9 @@ O frontend chama a Core API NestJS configurada em `NEXT_PUBLIC_API_URL`.
 - Vereadores: `GET /api/council-members`
 - Materias: `GET /api/legislative-matters`
 - Sessoes: `GET /api/plenary-sessions`
+- Protocolos: `GET /api/protocols`
+- Presenca: `GET /api/session-attendance/:sessionId`
+- Atas: `GET /api/session-minutes`
 - Auditoria: `GET /api/audit-logs`
 - Solicitar MFA de voto: `POST /api/votes/mfa`
 - Confirmar voto: `POST /api/votes/confirm`
@@ -105,13 +120,13 @@ Codigo MFA da demo: `123456`.
 
 ## Fluxo de Demonstracao
 
-1. Entre como `presidente@santaaurora.leg.br`.
+1. Entre como `secretario@santaaurora.leg.br`.
 2. Confirme o MFA com `123456`.
-3. Acesse o cockpit do plenario.
-4. Veja a materia em votacao e a apuracao nominal.
+3. Acesse `/secretaria` para criar protocolos, materias, sessoes, pauta, presenca e atas.
+4. Entre como `presidente@santaaurora.leg.br` e acompanhe o plenario.
 5. Acesse a tela do vereador para simular voto com MFA.
-6. Confira o comprovante visual de voto registrado.
-7. Abra o portal publico para ver materias, sessoes e resultado publicado.
+6. Confira o comprovante visual de voto registrado e a apuracao nominal.
+7. Abra o portal publico para ver materias, sessoes, atas, protocolos e resultados publicados.
 
 ## Regras Criticas Implementadas
 
@@ -121,8 +136,11 @@ Codigo MFA da demo: `123456`.
 - Voto confirmado e imutavel por modelagem: nao ha endpoint de edicao de voto.
 - Um vereador so vota uma vez por materia em uma sessao via constraint unica.
 - Registro de voto exige perfil VEREADOR, sessao aberta/em votacao, materia em VOTING e MFA consumido.
+- Registro de voto tambem exige presenca registrada como PRESENT ou LATE na sessao.
 - Presidente inicia e encerra votacao.
 - Resultado e calculado automaticamente a partir dos votos.
+- SECRETARIO controla protocolo, materias, sessoes, pauta, presenca e atas; nao altera resultado manualmente.
+- ADMIN_CAMARA controla usuarios, vereadores, perfis, auditoria e portal institucional; nao altera branding, dominio, plano/licenca ou voto.
 - AuditLog usa `hash` e `previous_hash`.
 - Portal publico nao exige login e retorna dados publicados/finalizados.
 
@@ -143,9 +161,10 @@ Frontend:
 apps/web/src/features/
   auth/       Login e MFA integrado ao backend
   master/     Console Master da plataforma
-  admin/      Dashboard, usuarios, vereadores, materias, sessoes, pauta e auditoria
-  plenary/    Presidente, secretario, vereador e resultado da votacao
-  public/     Home publica, materias, sessoes, resultados e vereadores
+  admin/      Dashboard, usuarios, vereadores, perfis, portal institucional e auditoria
+  secretaria/ Protocolos, materias, sessoes, pauta, presenca, atas e documentos
+  plenary/    Presidente, vereador e resultado da votacao
+  public/     Home publica, materias, sessoes, atas, protocolos, resultados e vereadores
   shared/     Dados de demo, tabelas, badges, cards e paineis
 ```
 

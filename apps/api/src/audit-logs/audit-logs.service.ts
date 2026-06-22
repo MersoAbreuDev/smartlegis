@@ -78,4 +78,12 @@ export class AuditLogsService {
     if (!log) throw new NotFoundException('Log nao encontrado.');
     return log;
   }
+
+  byEntity(entity: string, entityId: string, tenantId: string | null, isMaster: boolean) {
+    return this.prisma.auditLog.findMany({
+      where: isMaster ? { entity, entityId } : { tenantId, entity, entityId },
+      include: { actor: { select: { id: true, name: true, email: true } } },
+      orderBy: { createdAt: 'asc' }
+    });
+  }
 }

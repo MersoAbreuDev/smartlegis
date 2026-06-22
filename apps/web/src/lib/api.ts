@@ -47,6 +47,7 @@ export async function apiRequest<T>(path: string, options: ApiOptions = {}): Pro
 
 export function roleHome(role: UserRole) {
   if (role === 'MASTER') return 'master';
+  if (role === 'SECRETARIO') return 'secretaria';
   if (role === 'PRESIDENTE') return 'plenario';
   if (role === 'VEREADOR') return 'vereador';
   return 'admin';
@@ -59,6 +60,7 @@ export function roleHomePath(role: UserRole) {
 
 export function viewFromPath(pathname: string) {
   if (pathname.startsWith('/master')) return 'master';
+  if (pathname.startsWith('/secretaria')) return 'secretaria';
   if (pathname.startsWith('/plenario')) return 'plenario';
   if (pathname.startsWith('/vereador')) return 'vereador';
   if (pathname.startsWith('/publico')) return 'publico';
@@ -71,7 +73,7 @@ export function canAccessView(role: UserRole, view: string) {
   const matrix: Record<UserRole, string[]> = {
     MASTER: ['master'],
     ADMIN_CAMARA: ['admin'],
-    SECRETARIO: ['admin', 'plenario'],
+    SECRETARIO: ['secretaria', 'plenario'],
     PRESIDENTE: ['plenario'],
     VEREADOR: ['vereador']
   };

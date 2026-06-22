@@ -6,7 +6,7 @@ import { ProtectedView } from '@/features/auth/protected-view';
 
 export default function AdminPage() {
   return (
-    <ProtectedView allowedRoles={['ADMIN_CAMARA', 'SECRETARIO']}>
+    <ProtectedView allowedRoles={['ADMIN_CAMARA']}>
       <AppShell active="admin">
         <AdminFeature />
       </AppShell>

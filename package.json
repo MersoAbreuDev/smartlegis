@@ -11,7 +11,7 @@
     "apps/web"
   ],
   "scripts": {
-    "dev": "docker compose up -d postgres && npm run db:deploy && npm run dev --workspace apps/api & npm run dev --workspace apps/web",
+    "dev": "docker compose up -d postgres && npm run db:deploy && (npm run dev --workspace apps/api & npm run dev --workspace apps/web)",
     "api:dev": "npm run dev --workspace apps/api",
     "web:dev": "npm run dev --workspace apps/web",
     "db:migrate": "npm run prisma:migrate --workspace apps/api",

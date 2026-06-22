@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { MfaPurpose, PlenarySessionStatus, UserRole, VoteValue } from '@prisma/client';
+import { AttendanceStatus, MfaPurpose, PlenarySessionStatus, UserRole, VoteValue } from '@prisma/client';
 import { createHash } from 'crypto';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { AuthService } from '../auth/auth.service';
@@ -141,6 +141,64 @@ export class VotesService {
     return result;
   }
 
+  async status(sessionId: string, matterId: string, actor: { sub: string; tenantId: string; role: UserRole }) {
+    const [session, matter, members, attendances, votes] = await Promise.all([
+      this.prisma.plenarySession.findFirst({ where: { id: sessionId, tenantId: actor.tenantId } }),
+      this.prisma.legislativeMatter.findFirst({ where: { id: matterId, tenantId: actor.tenantId } }),
+      this.prisma.councilMember.findMany({ where: { tenantId: actor.tenantId, status: 'ACTIVE' } }),
+      this.prisma.sessionAttendance.findMany({ where: { tenantId: actor.tenantId, sessionId } }),
+      this.prisma.vote.findMany({ where: { tenantId: actor.tenantId, sessionId, matterId }, include: { councilMember: true } })
+    ]);
+    if (!session || !matter) throw new NotFoundException('Sessao ou materia nao encontrada.');
+    const presentIds = new Set(attendances.filter((item) => item.status === AttendanceStatus.PRESENT || item.status === AttendanceStatus.LATE).map((item) => item.councilMemberId));
+    const votedIds = new Set(votes.map((vote) => vote.councilMemberId));
+    const ownMember = actor.role === UserRole.VEREADOR ? members.find((member) => member.userId === actor.sub) : null;
+    const ownVote = ownMember ? votes.find((vote) => vote.councilMemberId === ownMember.id) : null;
+    return {
+      matter,
+      session,
+      totalCouncilMembers: members.length,
+      present: presentIds.size,
+      votesComputed: votes.length,
+      missingVotes: members.filter((member) => presentIds.has(member.id) && !votedIds.has(member.id)).map((member) => ({ id: member.id, name: member.name, party: member.party })),
+      alreadyVoted: Boolean(ownVote),
+      ownVote: ownVote ? { vote: ownVote.vote, confirmedAt: ownVote.confirmedAt, hash: ownVote.voteHash } : null
+    };
+  }
+
+  async receipt(sessionId: string, matterId: string, actor: { sub: string; tenantId: string }) {
+    const councilMember = await this.prisma.councilMember.findFirst({ where: { tenantId: actor.tenantId, userId: actor.sub } });
+    if (!councilMember) throw new NotFoundException('Vereador nao encontrado.');
+    const vote = await this.prisma.vote.findFirst({
+      where: { tenantId: actor.tenantId, sessionId, matterId, councilMemberId: councilMember.id },
+      include: { session: true, matter: true, councilMember: true }
+    });
+    if (!vote) throw new NotFoundException('Comprovante nao encontrado.');
+    return {
+      session: vote.session,
+      matter: vote.matter,
+      vote: vote.vote,
+      confirmedAt: vote.confirmedAt,
+      hash: vote.voteHash,
+      mfa: vote.mfaMethod,
+      ipAddress: vote.ipAddress,
+      userAgent: vote.userAgent ? vote.userAgent.slice(0, 80) : null
+    };
+  }
+
+  async nominal(sessionId: string, matterId: string, tenantId: string) {
+    return this.prisma.vote.findMany({
+      where: { tenantId, sessionId, matterId },
+      include: { councilMember: { select: { id: true, name: true, party: true } } },
+      orderBy: { confirmedAt: 'asc' }
+    }).then((votes) => votes.map((vote) => ({
+      councilMember: vote.councilMember,
+      vote: vote.vote,
+      confirmedAt: vote.confirmedAt,
+      hash: `${vote.voteHash.slice(0, 12)}...`
+    })));
+  }
+
   private async assertCanVote(actor: { sub: string; tenantId: string | null; role: UserRole }, sessionId: string, matterId: string, vote: VoteValue) {
     if (actor.role !== UserRole.VEREADOR) throw new ForbiddenException('Apenas vereador vota.');
     if (!actor.tenantId) throw new ForbiddenException('Tenant obrigatorio.');
@@ -154,6 +212,20 @@ export class VotesService {
       throw new BadRequestException('Sessao nao esta aberta para votacao.');
     }
     if (matter.status !== 'VOTING') throw new BadRequestException('Materia nao esta em votacao.');
+    const attendance = await this.prisma.sessionAttendance.findUnique({
+      where: {
+        tenantId_sessionId_councilMemberId: {
+          tenantId: actor.tenantId,
+          sessionId,
+          councilMemberId: councilMember.id
+        }
+      }
+    });
+    if (!attendance) throw new ForbiddenException('Presenca nao registrada. Solicite o registro da presenca antes de votar.');
+    const votingAttendanceStatuses: AttendanceStatus[] = [AttendanceStatus.PRESENT, AttendanceStatus.LATE];
+    if (!votingAttendanceStatuses.includes(attendance.status)) {
+      throw new ForbiddenException('Vereador ausente ou justificado nao pode votar.');
+    }
 
     const existing = await this.prisma.vote.findUnique({
       where: {

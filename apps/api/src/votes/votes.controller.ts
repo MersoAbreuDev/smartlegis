@@ -49,4 +49,22 @@ export class VotesController {
   result(@Param('sessionId') sessionId: string, @Param('matterId') matterId: string, @CurrentUser() user: { tenantId: string }) {
     return this.service.result(sessionId, matterId, user.tenantId);
   }
+
+  @Get(':sessionId/:matterId/status')
+  @Roles(UserRole.SECRETARIO, UserRole.PRESIDENTE, UserRole.VEREADOR)
+  status(@Param('sessionId') sessionId: string, @Param('matterId') matterId: string, @CurrentUser() user: { sub: string; tenantId: string; role: UserRole }) {
+    return this.service.status(sessionId, matterId, user);
+  }
+
+  @Get(':sessionId/:matterId/receipt')
+  @Roles(UserRole.VEREADOR)
+  receipt(@Param('sessionId') sessionId: string, @Param('matterId') matterId: string, @CurrentUser() user: { sub: string; tenantId: string }) {
+    return this.service.receipt(sessionId, matterId, user);
+  }
+
+  @Get(':sessionId/:matterId/nominal')
+  @Roles(UserRole.SECRETARIO, UserRole.PRESIDENTE)
+  nominal(@Param('sessionId') sessionId: string, @Param('matterId') matterId: string, @CurrentUser() user: { tenantId: string }) {
+    return this.service.nominal(sessionId, matterId, user.tenantId);
+  }
 }

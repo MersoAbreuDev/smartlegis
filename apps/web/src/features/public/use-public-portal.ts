@@ -8,32 +8,35 @@ import {
   PublicHomeData,
   PublicMatter,
   PublicSession,
-  publicApiPath
+  publicApiPath,
+  publicTenantKey
 } from './public-api';
 
 export function usePublicPortalData() {
+  const tenantKey = publicTenantKey();
+
   const branding = useQuery({
-    queryKey: ['public', 'branding'],
+    queryKey: ['public', tenantKey, 'branding'],
     queryFn: () => apiRequest<PublicBranding | null>(publicApiPath('/branding'))
   });
 
   const home = useQuery({
-    queryKey: ['public', 'home'],
+    queryKey: ['public', tenantKey, 'home'],
     queryFn: () => apiRequest<PublicHomeData>(publicApiPath())
   });
 
   const matters = useQuery({
-    queryKey: ['public', 'matters'],
+    queryKey: ['public', tenantKey, 'matters'],
     queryFn: () => apiRequest<PublicMatter[]>(publicApiPath('/matters'))
   });
 
   const sessions = useQuery({
-    queryKey: ['public', 'sessions'],
+    queryKey: ['public', tenantKey, 'sessions'],
     queryFn: () => apiRequest<PublicSession[]>(publicApiPath('/sessions'))
   });
 
   const councilMembers = useQuery({
-    queryKey: ['public', 'council-members'],
+    queryKey: ['public', tenantKey, 'council-members'],
     queryFn: () => apiRequest<PublicCouncilMember[]>(publicApiPath('/council-members'))
   });
 

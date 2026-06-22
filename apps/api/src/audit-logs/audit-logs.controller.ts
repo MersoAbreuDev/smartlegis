@@ -25,6 +25,12 @@ export class AuditLogsController {
     return this.service.list(user.tenantId, user.role === UserRole.MASTER, { actorUserId, action, entity, startDate, endDate, limit });
   }
 
+  @Get('entity/:entity/:entityId')
+  @Roles(UserRole.ADMIN_CAMARA, UserRole.SECRETARIO, UserRole.PRESIDENTE)
+  byEntity(@Param('entity') entity: string, @Param('entityId') entityId: string, @CurrentUser() user: { tenantId: string | null; role: UserRole }) {
+    return this.service.byEntity(entity, entityId, user.tenantId, user.role === UserRole.MASTER);
+  }
+
   @Get(':id')
   @Roles(UserRole.MASTER, UserRole.ADMIN_CAMARA)
   detail(@Param('id') id: string, @CurrentUser() user: { tenantId: string | null; role: UserRole }) {

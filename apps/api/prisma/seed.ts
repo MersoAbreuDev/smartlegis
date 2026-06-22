@@ -74,15 +74,17 @@ async function main() {
     }
   });
 
-  await prisma.tenantDomain.upsert({
-    where: { hostname: 'legis.santaaurora.mg.gov.br' },
-    update: {},
-    create: {
-      tenantId: tenant.id,
-      hostname: 'legis.santaaurora.mg.gov.br',
-      status: 'VALIDATED'
-    }
-  });
+  for (const hostname of ['legis.santaaurora.mg.gov.br', 'santaaurora.localhost']) {
+    await prisma.tenantDomain.upsert({
+      where: { hostname },
+      update: { tenantId: tenant.id, status: 'VALIDATED' },
+      create: {
+        tenantId: tenant.id,
+        hostname,
+        status: 'VALIDATED'
+      }
+    });
+  }
 
   for (const [key, value] of [
     ['smtp.host', 'smtp.smartlegis.local'],
@@ -131,8 +133,32 @@ async function main() {
           tenantId: tenant.id,
           userId: user.id,
           name: user.name,
+          cpf: ['123.456.789-01', '234.567.890-12', '345.678.901-23', '456.789.012-34', '567.890.123-45'][index],
+          email: user.email,
+          mobile: ['(31) 99999-0001', '(31) 99999-0002', '(31) 99999-0003', '(31) 99999-0004', '(31) 99999-0005'][index],
+          zipCode: '30140-071',
+          street: 'Rua da Camara',
+          number: String(100 + index),
+          neighborhood: 'Centro',
+          city: 'Santa Aurora',
+          state: 'MG',
+          businessDocument: ['11.111.111/0001-11', '22.222.222/0001-22', '33.333.333/0001-33', '44.444.444/0001-44', '55.555.555/0001-55'][index],
+          businessName: `Gabinete ${user.name}`,
+          businessTradeName: `Gabinete ${index + 1}`,
+          businessEmail: user.email,
+          businessPhone: ['(31) 3333-0001', '(31) 3333-0002', '(31) 3333-0003', '(31) 3333-0004', '(31) 3333-0005'][index],
+          businessZipCode: '30140-071',
+          businessStreet: 'Rua da Camara',
+          businessNumber: String(10 + index),
+          businessNeighborhood: 'Centro',
+          businessCity: 'Santa Aurora',
+          businessState: 'MG',
           party: ['PL', 'PSD', 'MDB', 'PSB', 'UNIÃO'][index],
           photoUrl: `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(user.name)}`,
+          legislativePeriod: '2025-2028',
+          legislativeRole: index === 0 ? 'Presidente' : index === 1 ? 'Secretaria' : 'Vereador',
+          isPresident: index === 0,
+          isSecretary: index === 1,
           termStart,
           termEnd
         }
@@ -217,11 +243,90 @@ async function main() {
     });
   }
 
+  for (let i = 0; i < members.length; i++) {
+    await prisma.sessionAttendance.upsert({
+      where: {
+        tenantId_sessionId_councilMemberId: {
+          tenantId: tenant.id,
+          sessionId: session.id,
+          councilMemberId: members[i].id
+        }
+      },
+      update: { status: i === members.length - 1 ? 'JUSTIFIED' : 'PRESENT', registeredBy: secretarioUser.id },
+      create: {
+        tenantId: tenant.id,
+        sessionId: session.id,
+        councilMemberId: members[i].id,
+        status: i === members.length - 1 ? 'JUSTIFIED' : 'PRESENT',
+        registeredBy: secretarioUser.id,
+        justification: i === members.length - 1 ? 'Ausencia justificada para demonstracao.' : null
+      }
+    });
+  }
+
+  const protocolPayload = {
+    tenantId: tenant.id,
+    protocolNumber: 1,
+    year: 2026,
+    documentType: 'Projeto de Lei',
+    subject: 'Energia solar em predios publicos',
+    description: 'Protocolo inicial vinculado a materia de demonstracao.',
+    authorName: 'Secretaria Legislativa',
+    authorDocument: '00.000.000/0001-00',
+    authorEmail: 'secretario@santaaurora.leg.br',
+    authorPhone: '(31) 3333-0000',
+    matterId: matters[0].id,
+    receivedBy: secretarioUser.id,
+    status: 'ATTACHED_TO_MATTER' as const,
+    documentUrl: '/documentos/protocolo-demo.pdf',
+    receiptHash: createHash('sha256').update(`${tenant.id}:1:2026:${matters[0].id}`).digest('hex')
+  };
+  await prisma.protocol.upsert({
+    where: { tenantId_protocolNumber_year: { tenantId: tenant.id, protocolNumber: 1, year: 2026 } },
+    update: protocolPayload,
+    create: protocolPayload
+  });
+
+  const minuteContent = [
+    `Ata da ${session.type} ${session.number}/2026 da ${tenant.name}.`,
+    'Aberta a sessao, foi registrada a presenca dos vereadores e iniciada a ordem do dia.',
+    `Materia em destaque: ${matters[0].title}.`,
+    'Esta ata foi gerada no seed para demonstrar o fluxo de criacao, revisao e publicacao pela Secretaria.'
+  ].join('\n\n');
+  await prisma.sessionMinute.upsert({
+    where: { tenantId_sessionId: { tenantId: tenant.id, sessionId: session.id } },
+    update: {
+      content: minuteContent,
+      status: 'PUBLISHED',
+      generatedAt: new Date(),
+      generatedBy: secretarioUser.id,
+      approvedAt: new Date(),
+      approvedBy: presidenteUser.id,
+      publishedAt: new Date(),
+      publishedBy: secretarioUser.id
+    },
+    create: {
+      tenantId: tenant.id,
+      sessionId: session.id,
+      content: minuteContent,
+      status: 'PUBLISHED',
+      generatedAt: new Date(),
+      generatedBy: secretarioUser.id,
+      approvedAt: new Date(),
+      approvedBy: presidenteUser.id,
+      publishedAt: new Date(),
+      publishedBy: secretarioUser.id
+    }
+  });
+
   await audit(tenant.id, admin.id, 'SEED_COMPLETED', 'Tenant', tenant.id, {
     tenant: tenant.name,
     users: 9,
     matters: matters.length,
-    session: `${session.type} ${session.number}`
+    session: `${session.type} ${session.number}`,
+    protocols: 1,
+    attendances: members.length,
+    minutes: 1
   });
 
   console.log(`Seed concluido. Senha de todos os usuarios: ${password}`);

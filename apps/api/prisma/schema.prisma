@@ -95,6 +95,28 @@ enum PublicationStatus {
   ARCHIVED
 }
 
+enum ProtocolStatus {
+  RECEIVED
+  FORWARDED_TO_SECRETARY
+  ATTACHED_TO_MATTER
+  CANCELLED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  JUSTIFIED
+  LATE
+}
+
+enum SessionMinuteStatus {
+  DRAFT
+  GENERATED
+  IN_REVIEW
+  APPROVED
+  PUBLISHED
+}
+
 model Tenant {
   id                    String       @id @default(uuid())
   name                  String
@@ -143,6 +165,9 @@ model Tenant {
   portalBanners      PortalBanner[]
   portalMenuItems    PortalMenuItem[]
   adminProfiles      AdminProfile[]
+  protocols          Protocol[]
+  sessionAttendances SessionAttendance[]
+  sessionMinutes     SessionMinute[]
 
   @@map("tenants")
 }
@@ -165,6 +190,11 @@ model User {
   adminProfile    AdminProfile?    @relation(fields: [adminProfileId], references: [id])
   councilMember   CouncilMember?
   createdMatters  LegislativeMatter[] @relation("MatterCreator")
+  receivedProtocols Protocol[] @relation("ProtocolReceiver")
+  registeredAttendances SessionAttendance[] @relation("AttendanceRegistrar")
+  generatedMinutes SessionMinute[] @relation("MinuteGenerator")
+  approvedMinutes SessionMinute[] @relation("MinuteApprover")
+  publishedMinutes SessionMinute[] @relation("MinutePublisher")
   mfaChallenges   MfaChallenge[]
   auditLogs       AuditLog[]
 
@@ -236,6 +266,7 @@ model CouncilMember {
   user            User?               @relation(fields: [userId], references: [id])
   authoredMatters LegislativeMatter[] @relation("MatterAuthor")
   votes           Vote[]
+  attendances     SessionAttendance[]
 
   @@index([tenantId, status])
   @@map("council_members")
@@ -261,6 +292,7 @@ model LegislativeMatter {
   creator     User                @relation("MatterCreator", fields: [createdBy], references: [id])
   agendaItems SessionAgendaItem[]
   votes       Vote[]
+  protocols   Protocol[]
 
   @@unique([tenantId, type, number, year])
   @@index([tenantId, status])
@@ -282,6 +314,8 @@ model PlenarySession {
   tenant      Tenant              @relation(fields: [tenantId], references: [id])
   agendaItems SessionAgendaItem[]
   votes       Vote[]
+  attendances SessionAttendance[]
+  minute      SessionMinute?
 
   @@unique([tenantId, type, number])
   @@index([tenantId, status])
@@ -303,6 +337,85 @@ model SessionAgendaItem {
   @@unique([tenantId, sessionId, matterId])
   @@unique([tenantId, sessionId, order])
   @@map("session_agenda_items")
+}
+
+model Protocol {
+  id             String         @id @default(uuid())
+  tenantId       String         @map("tenant_id")
+  protocolNumber Int            @map("protocol_number")
+  year           Int
+  documentType   String         @map("document_type")
+  subject        String
+  description    String
+  authorName     String         @map("author_name")
+  authorDocument String?        @map("author_document")
+  authorEmail    String?        @map("author_email")
+  authorPhone    String?        @map("author_phone")
+  matterId       String?        @map("matter_id")
+  receivedBy     String         @map("received_by")
+  receivedAt     DateTime       @default(now()) @map("received_at")
+  status         ProtocolStatus @default(RECEIVED)
+  receiptHash    String         @map("receipt_hash")
+  documentUrl    String?        @map("document_url")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  tenant   Tenant             @relation(fields: [tenantId], references: [id])
+  matter   LegislativeMatter? @relation(fields: [matterId], references: [id])
+  receiver User               @relation("ProtocolReceiver", fields: [receivedBy], references: [id])
+
+  @@unique([tenantId, protocolNumber, year])
+  @@index([tenantId, status])
+  @@index([tenantId, receivedAt])
+  @@map("protocols")
+}
+
+model SessionAttendance {
+  id              String           @id @default(uuid())
+  tenantId        String           @map("tenant_id")
+  sessionId       String           @map("session_id")
+  councilMemberId String           @map("council_member_id")
+  status          AttendanceStatus
+  registeredBy    String           @map("registered_by")
+  registeredAt    DateTime         @default(now()) @map("registered_at")
+  justification   String?
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
+  session       PlenarySession @relation(fields: [sessionId], references: [id])
+  councilMember CouncilMember  @relation(fields: [councilMemberId], references: [id])
+  registrar     User           @relation("AttendanceRegistrar", fields: [registeredBy], references: [id])
+
+  @@unique([tenantId, sessionId, councilMemberId])
+  @@index([tenantId, sessionId, status])
+  @@map("session_attendances")
+}
+
+model SessionMinute {
+  id          String              @id @default(uuid())
+  tenantId    String              @map("tenant_id")
+  sessionId   String              @unique @map("session_id")
+  content     String
+  status      SessionMinuteStatus @default(DRAFT)
+  generatedAt DateTime?           @map("generated_at")
+  generatedBy String?             @map("generated_by")
+  approvedAt  DateTime?           @map("approved_at")
+  approvedBy  String?             @map("approved_by")
+  publishedAt DateTime?           @map("published_at")
+  publishedBy String?             @map("published_by")
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+
+  tenant    Tenant         @relation(fields: [tenantId], references: [id])
+  session   PlenarySession @relation(fields: [sessionId], references: [id])
+  generator User?          @relation("MinuteGenerator", fields: [generatedBy], references: [id])
+  approver  User?          @relation("MinuteApprover", fields: [approvedBy], references: [id])
+  publisher User?          @relation("MinutePublisher", fields: [publishedBy], references: [id])
+
+  @@unique([tenantId, sessionId])
+  @@index([tenantId, status])
+  @@map("session_minutes")
 }
 
 model Vote {
